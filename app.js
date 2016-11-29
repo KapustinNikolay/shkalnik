@@ -15,6 +15,7 @@ const table1 = 'vacancies';
 const table2 = 'vacancies2';
 
 let offset = 0;
+let summ = 0;
 
 const sqlConf = {
   host: 'localhost',
@@ -26,15 +27,15 @@ const sqlConf = {
 
 const db = mysql.createConnection(sqlConf);
 
-go(offset);
+Promise.all([createTable(table1), createTable(table2)])
+  .then(() => {
+    go(offset);
+  })
+  .catch(console.error);
 
-let summ = 0;
 
 function go(offset) {
-  Promise.all([createTable(table1), createTable(table2)])
-    .then(() => {
-      return getUrls(offset);
-    })
+  getUrls(offset)
     .then(urls => {
       if (!urls.length) return console.log('DONE');
       return loadUrl(urls);
