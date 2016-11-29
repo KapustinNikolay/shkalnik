@@ -13,6 +13,7 @@ const slovar2 = fs.readFileSync('slovar1').toString();
 const LIMIT = 10;
 const table1 = 'vacancies';
 const table2 = 'vacancies2';
+const httpTimeout = 1000; //сколько ждать отклик страницы
 
 let offset = 0;
 let summ = 0;
@@ -135,7 +136,7 @@ function loadUrl(data) {
     return new Promise((resolve, reject) => {
       var path = i.url.indexOf('http') == 0 ? i.url : 'http://'+i.url;
       request(path, {
-        timeout: 1000,
+        timeout: httpTimeout,
         followAllRedirects: true
       }, (err, res, body) => {
         if (err) {
