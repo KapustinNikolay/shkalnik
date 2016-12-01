@@ -176,7 +176,7 @@ function htmlParse(data, dic) {
 
       if (match && link) {
         if (!~link.indexOf('http')) {
-          link = path.join(item.path, link);
+          link = path.join(item.path.split('/')[0], link);
         }
         result.push(
           {
