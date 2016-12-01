@@ -7,6 +7,7 @@ const _ = require('lodash');
 const fs = require('fs');
 const request = require('request');
 const co = require('co');
+const path = require('path');
 
 const slovar = fs.readFileSync('slovar1').toString();
 const slovar2 = fs.readFileSync('slovar1').toString();
@@ -57,13 +58,13 @@ function go(offset) {
       return insertTable(table2, data);
     })
     .then(() => {
-      console.log(++summ);
+      console.log(offset);
       offset+=LIMIT;
       go(offset);
     })
     .catch(err => {
       console.error(err);
-      offset=+LIMIT;
+      offset+=LIMIT;
       go(offset);
     });
 }
@@ -74,7 +75,8 @@ function createTable(name) {
       'CREATE TABLE IF NOT EXISTS `'+name+'` (',
       '`id` int(10) unsigned NOT NULL AUTO_INCREMENT,',
       '`name` varchar(255) COLLATE utf8_unicode_ci NOT NULL,',
-      '`url` varchar(255) COLLATE utf8_unicode_ci NOT NULL,',
+      '`content` varchar(1024) COLLATE utf8_unicode_ci NOT NULL,',
+      '`url` varchar(1024) COLLATE utf8_unicode_ci NOT NULL,',
       '`company_id` int(10) unsigned NOT NULL,',
       'PRIMARY KEY (`id`)',
       ')'
@@ -94,18 +96,19 @@ function insertTable(name, data) {
   return new Promise((resolve, reject) => {
     if (!data.length) return resolve(null);
     var query = [
-      'INSERT INTO `'+name+'` (`name`, `url`, `company_id`) VALUES'
+      'INSERT INTO `'+name+'` (`name`, `content`, `url`, `company_id`) VALUES'
     ];
 
     data.forEach((i, index) => {
-      query.push('("'+i.name+'","'+i.url+'", '+i.company_id+')' + (index != data.length-1 ? ',' : ''))
+      query.push('("'+i.name+'","'+i.content+'","'+i.url+'", '+i.company_id+')' + (index != data.length-1 ? ',' : ''))
     });
 
-    db.query(query.join(' '), (err, data) => {
+    db.query(query.join(' '), (err, result) => {
       if (err) {
+        console.log(data);
         reject(err);
       } else {
-        resolve(data);
+        resolve(result);
       }
     })
   });
@@ -160,21 +163,25 @@ function loadUrl(data) {
 function htmlParse(data, dic) {
   dic = dic.split('\n').join('|');
   var result = [];
-  const reg = new RegExp('('+dic+')', 'ig');
+  const reg = new RegExp('('+dic+')', 'i');
 
   data.forEach(item => {
     if (!item) return false;
-    var path = item.path.replace('/', '');
     const doc = $.load(item.body);
     doc('a').each((i, el) => {
       el = $(el);
-      if (reg.test(el.text())) {
-        var link = el.attr('href');
-        link = link || link.indexOf('http') === 0 ? link : path + '/'+ (link[0] == '/' ? link.slice(1) : link) ;
+      var content = el.text();
+      var link = el.attr('href');
+      var match = content.match(reg);
 
+      if (match && link) {
+        if (!~link.indexOf('http')) {
+          link = path.join(item.path, link);
+        }
         result.push(
           {
-            name: item.name,
+            name: match.pop(),
+            content: _.trim(content).slice(0, 1024).replace(/['"\n]/g, ''),
             company_id: item.company_id,
             url: link
           }
